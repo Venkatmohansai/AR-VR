@@ -5,7 +5,7 @@ import cloudinary
 import cloudinary.uploader
 from dotenv import load_dotenv
 
-# Load .env locally only
+# ---------- LOAD ENV ----------
 load_dotenv()
 
 app = Flask(__name__)
@@ -43,7 +43,7 @@ cloudinary.config(
     secure=True
 )
 
-# ---------- MODEL ----------
+# ---------- DATABASE MODEL ----------
 class Project(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(120), nullable=False)
@@ -54,7 +54,6 @@ class Project(db.Model):
 
 with app.app_context():
     db.create_all()
-
 
 # ---------- ROUTES ----------
 
@@ -67,43 +66,60 @@ def dashboard():
 @app.route("/image-ar/<int:project_id>")
 def image_ar(project_id):
     project = Project.query.get_or_404(project_id)
+
     if project.type != "image":
         abort(404)
+
     return render_template("image_ar.html", project=project)
 
 
 @app.route("/model-ar/<int:project_id>")
 def model_ar(project_id):
     project = Project.query.get_or_404(project_id)
+
     if project.type != "model":
         abort(404)
+
     return render_template("model_ar.html", project=project)
 
 
 @app.route("/create")
 def create_project():
+
     if not session.get("create_auth"):
-        return render_template("pin_login.html", next_page="/create")
+        return render_template(
+            "pin_login.html",
+            next_page="/create"
+        )
+
     return render_template("create_project.html")
 
 
 @app.route("/verify-pin", methods=["POST"])
 def verify_pin():
+
     pin = request.form.get("pin")
-    next_page = request.form.get("next_page", "/")
+    next_page = request.form.get("next_page") or "/"
 
     correct_pin = os.environ.get("ADMIN_PIN", "1234")
 
     if pin == correct_pin:
+
         session["create_auth"] = True
         session.permanent = True
+
         return redirect(next_page)
 
-    return render_template("pin_login.html", error="Wrong PIN")
+    return render_template(
+        "pin_login.html",
+        error="Wrong PIN",
+        next_page=next_page
+    )
 
 
 @app.route("/save", methods=["POST"])
 def save():
+
     if not session.get("create_auth"):
         return redirect("/create")
 
@@ -115,6 +131,7 @@ def save():
         return "No file selected", 400
 
     try:
+
         resource_type = "image" if ptype == "image" else "raw"
 
         upload_result = cloudinary.uploader.upload(
@@ -136,18 +153,21 @@ def save():
         return redirect("/")
 
     except Exception as e:
+
         db.session.rollback()
         return f"Upload error: {e}", 500
 
 
 @app.route("/delete/<int:id>")
 def delete_project(id):
+
     if not session.get("create_auth"):
         return redirect("/create")
 
     project = Project.query.get_or_404(id)
 
     try:
+
         if project.file_public_id:
             cloudinary.uploader.destroy(project.file_public_id)
 
@@ -155,6 +175,7 @@ def delete_project(id):
         db.session.commit()
 
     except:
+
         db.session.rollback()
         return "Delete failed", 500
 
@@ -163,6 +184,7 @@ def delete_project(id):
 
 @app.route("/logout")
 def logout():
+
     session.clear()
     return redirect("/")
 
@@ -172,6 +194,13 @@ def wall_ar():
     return render_template("wall_ar.html")
 
 
+# ---------- RUN SERVER ----------
+
 if __name__ == "__main__":
+
     port = int(os.environ.get("PORT", 5000))
-    app.run(host="0.0.0.0", port=port)
+
+    app.run(
+        host="0.0.0.0",
+        port=port
+    )
