@@ -1,3 +1,4 @@
+```html
 <!DOCTYPE html>
 <html>
 <head>
@@ -12,7 +13,7 @@ src="https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js"></script>
 
 <style>
 
-/* PARTICLE BACKGROUND */
+/* PARTICLES */
 
 #particles{
 position:fixed;
@@ -46,13 +47,13 @@ animation:bg 18s ease infinite;
 display:flex;
 justify-content:space-between;
 align-items:center;
-padding:18px 40px;
-background:rgba(15,23,42,.8);
+padding:12px 16px;
+background:rgba(15,23,42,.85);
 backdrop-filter:blur(14px);
 }
 
 .logo{
-font-size:22px;
+font-size:18px;
 font-weight:700;
 color:#22c55e;
 }
@@ -64,97 +65,107 @@ gap:10px;
 
 .btn-create{
 background:#06b6d4;
-padding:10px 18px;
-border-radius:10px;
+padding:8px 16px;
+border-radius:8px;
 text-decoration:none;
 color:white;
+font-size:14px;
 }
 
 .btn-logout{
 background:#ef4444;
-padding:10px 18px;
-border-radius:10px;
+padding:8px 16px;
+border-radius:8px;
 text-decoration:none;
 color:white;
+font-size:14px;
 }
 
 /* STATS */
 
 .stats{
 display:flex;
-justify-content:center;
-gap:80px;
-padding:40px;
+justify-content:space-around;
+flex-wrap:wrap;
+padding:20px;
 text-align:center;
 }
 
 .stat h2{
-font-size:38px;
+font-size:28px;
 color:#06b6d4;
+margin-bottom:4px;
+}
+
+.stat p{
+color:#94a3b8;
+font-size:13px;
 }
 
 /* HERO */
 
 .hero{
 text-align:center;
-padding:60px 20px;
+padding:40px 20px;
 }
 
 .hero h1{
-font-size:42px;
+font-size:30px;
 }
 
 .hero p{
 color:#9ca3af;
+font-size:14px;
 }
 
 /* TOOLS */
 
 .tools{
-padding:60px 40px;
+padding:30px 20px;
 text-align:center;
 }
 
 .section-title{
-font-size:32px;
-margin-bottom:40px;
+font-size:24px;
+margin-bottom:25px;
 }
 
 .tool-grid{
 display:grid;
-grid-template-columns:repeat(auto-fit,minmax(260px,1fr));
-gap:30px;
+grid-template-columns:repeat(auto-fit,minmax(240px,1fr));
+gap:20px;
 }
 
 .tool-card{
 background:rgba(255,255,255,.05);
 backdrop-filter:blur(12px);
-border-radius:18px;
-padding:20px;
+border-radius:16px;
+padding:16px;
 transition:.3s;
 }
 
 .tool-card:hover{
-transform:translateY(-8px);
+transform:translateY(-6px);
 box-shadow:0 20px 40px rgba(0,0,0,.6);
 }
 
 .tool-card img{
 width:100%;
-height:170px;
+height:150px;
 object-fit:cover;
-border-radius:12px;
-margin-bottom:12px;
+border-radius:10px;
+margin-bottom:10px;
 }
 
 .tool-btn{
 display:inline-block;
-margin-top:10px;
+margin-top:8px;
 background:#06b6d4;
-padding:8px 18px;
+padding:8px 16px;
 border-radius:8px;
 color:white;
 text-decoration:none;
+font-size:14px;
 }
 
 /* SEARCH */
@@ -162,14 +173,15 @@ text-decoration:none;
 .search{
 display:flex;
 justify-content:center;
-padding:30px;
+padding:20px;
 }
 
 .search input{
-width:450px;
-padding:15px;
+width:100%;
+max-width:500px;
+padding:12px;
 border:none;
-border-radius:14px;
+border-radius:12px;
 background:rgba(255,255,255,.08);
 color:white;
 }
@@ -177,83 +189,89 @@ color:white;
 /* PROJECTS */
 
 .projects{
-padding:40px;
+padding:30px 20px;
 }
 
 .project-card{
 background:rgba(255,255,255,.06);
 backdrop-filter:blur(12px);
-border-radius:16px;
-padding:15px;
+border-radius:14px;
+padding:12px;
 transition:.25s;
 position:relative;
 }
 
 .project-card:hover{
-transform:translateY(-6px);
+transform:translateY(-5px);
 }
 
 .project-img{
 width:100%;
-height:170px;
-border-radius:12px;
+height:160px;
+border-radius:10px;
 object-fit:cover;
 }
 
 model-viewer{
 width:100%;
-height:170px;
-border-radius:12px;
+height:160px;
+border-radius:10px;
+background:#000;
 }
 
 .btn-ar{
-margin-top:10px;
+margin-top:8px;
 width:100%;
 background:#06b6d4;
 border:none;
-border-radius:10px;
-padding:10px;
+border-radius:8px;
+padding:8px;
 color:white;
+font-size:14px;
 }
 
 .delete-btn{
 position:absolute;
-top:10px;
-right:10px;
+top:8px;
+right:8px;
 background:#ef4444;
-width:28px;
-height:28px;
+width:26px;
+height:26px;
 border-radius:50%;
 display:flex;
 align-items:center;
 justify-content:center;
 color:white;
 text-decoration:none;
+font-size:14px;
 }
 
 /* FLOAT BUTTON */
 
 .float-btn{
 position:fixed;
-bottom:90px;
-right:30px;
-width:60px;
-height:60px;
+bottom:30px;
+right:20px;
+width:56px;
+height:56px;
 border-radius:50%;
 background:#06b6d4;
 display:flex;
 align-items:center;
 justify-content:center;
-font-size:28px;
+font-size:26px;
 text-decoration:none;
 color:white;
+box-shadow:0 10px 25px rgba(0,0,0,.6);
+z-index:1000;
 }
 
 /* FOOTER */
 
 .footer{
 text-align:center;
-padding:40px;
+padding:30px;
+font-size:13px;
 color:#94a3b8;
 }
 
@@ -301,44 +319,9 @@ color:#94a3b8;
 <!-- HERO -->
 
 <div class="hero">
-
 <h1>Explore AR Experiences</h1>
 <p>Create immersive augmented reality projects using images and 3D models.</p>
-
 </div>
-
-<!-- AR TOOLS -->
-
-<section class="tools">
-
-<h2 class="section-title">AR Tools</h2>
-
-<div class="tool-grid">
-
-<div class="tool-card">
-<img src="https://images.unsplash.com/photo-1581090700227-1e37b190418e">
-<h3>AR Image Viewer</h3>
-<p>Upload an image and preview it in AR.</p>
-<a href="/create" class="tool-btn">Try</a>
-</div>
-
-<div class="tool-card">
-<img src="https://images.unsplash.com/photo-1596495577886-d920f1fb7238">
-<h3>3D Model AR</h3>
-<p>Place GLB models in your environment.</p>
-<a href="/create" class="tool-btn">Try</a>
-</div>
-
-<div class="tool-card">
-<img src="https://images.unsplash.com/photo-1600585154526-990dced4db0d">
-<h3>Wall Color AR</h3>
-<p>Preview wall colors using AR.</p>
-<a href="/wall-ar" class="tool-btn">Open</a>
-</div>
-
-</div>
-
-</section>
 
 <!-- SEARCH -->
 
@@ -352,11 +335,11 @@ color:#94a3b8;
 
 <h2 class="section-title">My Projects</h2>
 
-<div class="row g-4" id="projectGrid">
+<div class="row g-3" id="projectGrid">
 
 {% for p in projects %}
 
-<div class="col-md-3 col-6 project-item">
+<div class="col-6 col-md-3 project-item">
 
 <div class="project-card">
 
@@ -366,9 +349,22 @@ color:#94a3b8;
 
 {% if p.type == 'model' %}
 
-<model-viewer src="{{p.file_url}}" camera-controls auto-rotate></model-viewer>
+<model-viewer
+src="{{p.file_url}}"
+camera-controls
+auto-rotate
+ar
+ar-modes="webxr scene-viewer quick-look"
+ar-scale="auto"
+ar-placement="floor"
+environment-image="neutral"
+shadow-intensity="1">
 
-<a href="/model-ar/{{p.id}}" class="btn btn-ar">View AR</a>
+<button slot="ar-button" class="btn-ar">
+View in AR
+</button>
+
+</model-viewer>
 
 {% else %}
 
@@ -457,3 +453,4 @@ draw()
 
 </body>
 </html>
+```
