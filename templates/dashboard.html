@@ -13,32 +13,11 @@ src="https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js"></script>
 
 <style>
 
-/* PARTICLES */
-
-#particles{
-position:fixed;
-top:0;
-left:0;
-width:100%;
-height:100%;
-z-index:-1;
-}
-
-/* BODY */
-
 body{
 margin:0;
-font-family:Segoe UI,sans-serif;
+font-family:Segoe UI;
+background:#020617;
 color:white;
-background:linear-gradient(-45deg,#020617,#0f172a,#020617,#1e293b);
-background-size:400% 400%;
-animation:bg 18s ease infinite;
-}
-
-@keyframes bg{
-0%{background-position:0% 50%;}
-50%{background-position:100% 50%;}
-100%{background-position:0% 50%;}
 }
 
 /* HEADER */
@@ -47,162 +26,149 @@ animation:bg 18s ease infinite;
 display:flex;
 justify-content:space-between;
 align-items:center;
-padding:12px 16px;
-background:rgba(15,23,42,.85);
-backdrop-filter:blur(14px);
+padding:15px 30px;
+background:#020617;
+border-bottom:1px solid #1e293b;
 }
 
 .logo{
-font-size:18px;
+font-size:22px;
 font-weight:700;
 color:#22c55e;
 }
 
-.nav-buttons{
-display:flex;
-gap:10px;
-}
-
-.btn-create{
-background:#06b6d4;
-padding:8px 16px;
+.nav-buttons a{
+margin-left:10px;
+padding:8px 18px;
 border-radius:8px;
 text-decoration:none;
 color:white;
 font-size:14px;
 }
 
-.btn-logout{
-background:#ef4444;
-padding:8px 16px;
-border-radius:8px;
-text-decoration:none;
-color:white;
-font-size:14px;
-}
-
-/* STATS */
-
-.stats{
-display:flex;
-justify-content:space-around;
-flex-wrap:wrap;
-padding:20px;
-text-align:center;
-}
-
-.stat h2{
-font-size:28px;
-color:#06b6d4;
-margin-bottom:4px;
-}
-
-.stat p{
-color:#94a3b8;
-font-size:13px;
-}
+.btn-create{background:#06b6d4;}
+.btn-logout{background:#ef4444;}
 
 /* HERO */
 
 .hero{
+height:260px;
+display:flex;
+align-items:center;
+justify-content:center;
 text-align:center;
-padding:40px 20px;
+background-image:url("https://images.unsplash.com/photo-1581090700227-1e37b190418e");
+background-size:cover;
+background-position:center;
+position:relative;
 }
 
-.hero h1{
-font-size:30px;
+.hero::after{
+content:"";
+position:absolute;
+inset:0;
+background:rgba(2,6,23,.7);
 }
 
-.hero p{
-color:#9ca3af;
-font-size:14px;
+.hero-content{
+position:relative;
+z-index:2;
 }
 
-/* TOOLS */
+.hero h1{font-size:38px;}
+.hero p{color:#cbd5f5;}
 
-.tools{
-padding:30px 20px;
-text-align:center;
-}
+/* STATS */
 
-.section-title{
-font-size:24px;
-margin-bottom:25px;
-}
-
-.tool-grid{
+.stats{
 display:grid;
-grid-template-columns:repeat(auto-fit,minmax(240px,1fr));
+grid-template-columns:repeat(auto-fit,minmax(180px,1fr));
 gap:20px;
+padding:30px;
 }
 
-.tool-card{
-background:rgba(255,255,255,.05);
-backdrop-filter:blur(12px);
+.stat-card{
+background:#0f172a;
+border-radius:14px;
+padding:20px;
+text-align:center;
+}
+
+.stat-card h2{color:#06b6d4;}
+
+/* AR TOOLS */
+
+.features{
+padding:40px 30px;
+}
+
+.feature-grid{
+display:grid;
+grid-template-columns:repeat(auto-fit,minmax(260px,1fr));
+gap:25px;
+}
+
+.feature-card{
+background:#0f172a;
 border-radius:16px;
-padding:16px;
+padding:20px;
+text-align:center;
 transition:.3s;
 }
 
-.tool-card:hover{
+.feature-card:hover{
 transform:translateY(-6px);
-box-shadow:0 20px 40px rgba(0,0,0,.6);
+box-shadow:0 15px 35px rgba(0,0,0,.6);
 }
 
-.tool-card img{
+.feature-card img{
 width:100%;
-height:150px;
+height:170px;
 object-fit:cover;
 border-radius:10px;
-margin-bottom:10px;
+margin-bottom:12px;
 }
 
 .tool-btn{
 display:inline-block;
-margin-top:8px;
+margin-top:10px;
 background:#06b6d4;
-padding:8px 16px;
+padding:8px 18px;
 border-radius:8px;
 color:white;
 text-decoration:none;
-font-size:14px;
 }
 
 /* SEARCH */
 
 .search{
+padding:20px;
 display:flex;
 justify-content:center;
-padding:20px;
 }
 
 .search input{
 width:100%;
 max-width:500px;
 padding:12px;
+border-radius:10px;
 border:none;
-border-radius:12px;
-background:rgba(255,255,255,.08);
+background:#0f172a;
 color:white;
 }
 
 /* PROJECTS */
 
 .projects{
-padding:30px 20px;
+padding:30px;
 }
 
 .project-card{
-background:rgba(255,255,255,.06);
-backdrop-filter:blur(12px);
+background:#0f172a;
 border-radius:14px;
 padding:12px;
-transition:.25s;
+transition:.3s;
 position:relative;
-}
-
-.project-card:hover{
-transform:translateY(-5px);
 }
 
 .project-img{
@@ -216,18 +182,16 @@ model-viewer{
 width:100%;
 height:160px;
 border-radius:10px;
-background:#000;
 }
 
 .btn-ar{
-margin-top:8px;
 width:100%;
+margin-top:10px;
 background:#06b6d4;
 border:none;
 border-radius:8px;
 padding:8px;
 color:white;
-font-size:14px;
 }
 
 .delete-btn{
@@ -241,9 +205,8 @@ border-radius:50%;
 display:flex;
 align-items:center;
 justify-content:center;
-color:white;
 text-decoration:none;
-font-size:14px;
+color:white;
 }
 
 /* FLOAT BUTTON */
@@ -252,18 +215,17 @@ font-size:14px;
 position:fixed;
 bottom:30px;
 right:20px;
-width:56px;
-height:56px;
+width:60px;
+height:60px;
 border-radius:50%;
 background:#06b6d4;
 display:flex;
 align-items:center;
 justify-content:center;
-font-size:26px;
+font-size:28px;
 text-decoration:none;
 color:white;
-box-shadow:0 10px 25px rgba(0,0,0,.6);
-z-index:1000;
+box-shadow:0 10px 25px rgba(0,0,0,.7);
 }
 
 /* FOOTER */
@@ -271,7 +233,6 @@ z-index:1000;
 .footer{
 text-align:center;
 padding:30px;
-font-size:13px;
 color:#94a3b8;
 }
 
@@ -279,8 +240,6 @@ color:#94a3b8;
 </head>
 
 <body>
-
-<canvas id="particles"></canvas>
 
 <!-- HEADER -->
 
@@ -295,47 +254,104 @@ color:#94a3b8;
 
 </div>
 
+<!-- HERO -->
+
+<div class="hero">
+
+<div class="hero-content">
+
+<h1>Build Augmented Reality Experiences</h1>
+
+<p>Create, preview and share immersive AR projects</p>
+
+</div>
+
+</div>
+
 <!-- STATS -->
 
 <div class="stats">
 
-<div class="stat">
+<div class="stat-card">
 <h2>{{ projects|length }}</h2>
 <p>Projects</p>
 </div>
 
-<div class="stat">
+<div class="stat-card">
 <h2>500</h2>
 <p>AR Views</p>
 </div>
 
-<div class="stat">
+<div class="stat-card">
 <h2>120</h2>
 <p>Creators</p>
 </div>
 
 </div>
 
-<!-- HERO -->
+<!-- AR TOOLS -->
 
-<div class="hero">
-<h1>Explore AR Experiences</h1>
-<p>Create immersive augmented reality projects using images and 3D models.</p>
+<div class="features">
+
+<h2 style="margin-bottom:25px">AR Tools</h2>
+
+<div class="feature-grid">
+
+<div class="feature-card">
+
+<img src="https://images.unsplash.com/photo-1581090700227-1e37b190418e">
+
+<h5>Image AR</h5>
+
+<p>Place images in the real world using AR</p>
+
+<a href="/create" class="tool-btn">Try it</a>
+
+</div>
+
+<div class="feature-card">
+
+<img src="https://images.unsplash.com/photo-1596495577886-d920f1fb7238">
+
+<h5>3D Model AR</h5>
+
+<p>Upload GLB models and visualize in space</p>
+
+<a href="/create" class="tool-btn">Try it</a>
+
+</div>
+
+<div class="feature-card">
+
+<img src="https://images.unsplash.com/photo-1600585154526-990dced4db0d">
+
+<h5>Wall Color AR</h5>
+
+<p>Preview wall colors with AR overlay</p>
+
+<a href="/wall-ar" class="tool-btn">Open it</a>
+
+</div>
+
+</div>
+
 </div>
 
 <!-- SEARCH -->
 
 <div class="search">
+
 <input id="searchInput" type="text" placeholder="Search projects...">
+
 </div>
 
 <!-- PROJECTS -->
 
 <div class="projects">
 
-<h2 class="section-title">My Projects</h2>
+<h2 style="margin-bottom:20px">My Projects</h2>
 
-<div class="row g-3" id="projectGrid">
+<div class="row g-3">
 
 {% for p in projects %}
 
@@ -349,22 +365,9 @@ color:#94a3b8;
 
 {% if p.type == 'model' %}
 
-<model-viewer
-src="{{p.file_url}}"
-camera-controls
-auto-rotate
-ar
-ar-modes="webxr scene-viewer quick-look"
-ar-scale="auto"
-ar-placement="floor"
-environment-image="neutral"
-shadow-intensity="1">
+<model-viewer src="{{p.file_url}}" camera-controls auto-rotate></model-viewer>
 
-<button slot="ar-button" class="btn-ar">
-View in AR
-</button>
-
-</model-viewer>
+<a href="/model-ar/{{p.id}}" class="btn btn-ar">View AR</a>
 
 {% else %}
 
@@ -387,12 +390,12 @@ View in AR
 <a href="/create" class="float-btn">+</a>
 
 <div class="footer">
-© 2026 ARVR Studio • Built for immersive AR experiences
+
+© 2026 ARVR Studio • Immersive AR Platform
+
 </div>
 
 <script>
-
-/* SEARCH */
 
 document.getElementById("searchInput").addEventListener("keyup", function(){
 
@@ -407,47 +410,6 @@ card.style.display=name.includes(value)?"block":"none"
 })
 
 })
-
-/* PARTICLES */
-
-const canvas=document.getElementById("particles")
-const ctx=canvas.getContext("2d")
-
-canvas.width=window.innerWidth
-canvas.height=window.innerHeight
-
-let particles=[]
-
-for(let i=0;i<60;i++){
-particles.push({
-x:Math.random()*canvas.width,
-y:Math.random()*canvas.height,
-r:Math.random()*2
-})
-}
-
-function draw(){
-
-ctx.clearRect(0,0,canvas.width,canvas.height)
-
-particles.forEach(p=>{
-
-ctx.beginPath()
-ctx.arc(p.x,p.y,p.r,0,Math.PI*2)
-ctx.fillStyle="rgba(255,255,255,.25)"
-ctx.fill()
-
-p.y+=0.3
-
-if(p.y>canvas.height)p.y=0
-
-})
-
-requestAnimationFrame(draw)
-
-}
-
-draw()
 
 </script>
 
