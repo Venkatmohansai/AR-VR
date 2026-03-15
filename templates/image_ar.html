@@ -1,11 +1,13 @@
-```html
+```html id="android1"
 <!DOCTYPE html>
 <html>
 <head>
 
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Image AR</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Android WebXR AR</title>
+
+<script src="https://cdn.jsdelivr.net/npm/three@0.158.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.158.0/examples/js/webxr/ARButton.js"></script>
 
 <style>
 
@@ -14,59 +16,35 @@ margin:0;
 overflow:hidden;
 font-family:Arial;
 background:black;
-color:white;
 }
 
-/* START BUTTON */
-
-#startAR{
-position:fixed;
-bottom:40px;
-left:50%;
-transform:translateX(-50%);
-padding:16px 40px;
-border:none;
-border-radius:30px;
-background:#06b6d4;
+#info{
+position:absolute;
+top:20px;
+width:100%;
+text-align:center;
 color:white;
 font-size:18px;
 z-index:10;
-cursor:pointer;
-}
-
-/* MESSAGE */
-
-#msg{
-position:fixed;
-top:20px;
-left:50%;
-transform:translateX(-50%);
-background:rgba(0,0,0,.6);
-padding:10px 20px;
-border-radius:20px;
-font-size:14px;
 }
 
 </style>
-
-<script src="https://cdn.jsdelivr.net/npm/three@0.158.0/build/three.min.js"></script>
 
 </head>
 
 <body>
 
-<div id="msg">
-Point camera at wall → Tap screen to place image
+<div id="info">
+Move phone to detect wall or floor → Tap to place image
 </div>
-
-<button id="startAR">Start AR</button>
 
 <script>
 
-let scene, camera, renderer;
+let camera, scene, renderer;
 let controller;
 let reticle;
-let hitTestSource=null;
+let hitTestSource = null;
+let hitTestSourceRequested = false;
 
 init();
 
@@ -74,32 +52,40 @@ function init(){
 
 scene = new THREE.Scene();
 
-camera = new THREE.PerspectiveCamera();
+camera = new THREE.PerspectiveCamera(
+70,
+window.innerWidth / window.innerHeight,
+0.01,
+20
+);
 
-renderer = new THREE.WebGLRenderer({alpha:true,antialias:true});
+renderer = new THREE.WebGLRenderer({
+antialias:true,
+alpha:true
+});
 
-renderer.setSize(window.innerWidth,window.innerHeight);
-
-renderer.xr.enabled=true;
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.xr.enabled = true;
 
 document.body.appendChild(renderer.domElement);
+document.body.appendChild(ARButton.createButton(renderer,{
+requiredFeatures:["hit-test"]
+}));
 
 /* LIGHT */
 
 const light = new THREE.HemisphereLight(0xffffff,0xbbbbff,1);
-
 scene.add(light);
 
 /* RETICLE */
 
 const geometry = new THREE.RingGeometry(0.15,0.2,32).rotateX(-Math.PI/2);
 
-const material = new THREE.MeshBasicMaterial({color:0xffffff});
+const material = new THREE.MeshBasicMaterial();
 
 reticle = new THREE.Mesh(geometry,material);
 
 reticle.matrixAutoUpdate=false;
-
 reticle.visible=false;
 
 scene.add(reticle);
@@ -111,34 +97,6 @@ controller = renderer.xr.getController(0);
 controller.addEventListener("select", placeImage);
 
 scene.add(controller);
-
-/* START BUTTON */
-
-document.getElementById("startAR").onclick=startAR;
-
-}
-
-/* START AR */
-
-async function startAR(){
-
-if(!navigator.xr){
-
-alert("WebXR not supported on this device");
-
-return;
-
-}
-
-const session = await navigator.xr.requestSession("immersive-ar",{
-requiredFeatures:["hit-test"]
-});
-
-renderer.xr.setSession(session);
-
-const viewerSpace = await session.requestReferenceSpace("viewer");
-
-hitTestSource = await session.requestHitTestSource({space:viewerSpace});
 
 renderer.setAnimationLoop(render);
 
@@ -152,7 +110,7 @@ if(!reticle.visible) return;
 
 const texture = new THREE.TextureLoader().load("{{ project.file_url }}");
 
-const geometry = new THREE.PlaneGeometry(0.7,0.7);
+const geometry = new THREE.PlaneGeometry(0.8,0.8);
 
 const material = new THREE.MeshBasicMaterial({
 map:texture,
@@ -171,11 +129,30 @@ scene.add(plane);
 
 /* RENDER LOOP */
 
-function render(timestamp, frame){
+function render(timestamp,frame){
 
 if(frame){
 
 const referenceSpace = renderer.xr.getReferenceSpace();
+const session = renderer.xr.getSession();
+
+if(hitTestSourceRequested === false){
+
+session.requestReferenceSpace("viewer").then(function(referenceSpace){
+
+session.requestHitTestSource({space:referenceSpace}).then(function(source){
+
+hitTestSource = source;
+
+});
+
+});
+
+hitTestSourceRequested = true;
+
+}
+
+if(hitTestSource){
 
 const hitTestResults = frame.getHitTestResults(hitTestSource);
 
@@ -185,13 +162,15 @@ const hit = hitTestResults[0];
 
 const pose = hit.getPose(referenceSpace);
 
-reticle.visible=true;
+reticle.visible = true;
 
 reticle.matrix.fromArray(pose.transform.matrix);
 
 }else{
 
-reticle.visible=false;
+reticle.visible = false;
+
+}
 
 }
 
