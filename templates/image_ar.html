@@ -1,7 +1,5 @@
-```html
 <!DOCTYPE html>
 <html>
-
 <head>
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -27,26 +25,20 @@ text-align:center;
 color:white;
 font-size:18px;
 z-index:10;
-background:rgba(0,0,0,.4);
-padding:8px;
+background:rgba(0,0,0,.5);
+padding:10px;
 }
 
 </style>
-
 </head>
 
 <body>
 
 <div id="info">
-Move phone to detect wall or floor → Tap screen to place image
+Move phone slowly → Wait for circle → Tap screen to place image
 </div>
 
 <script>
-
-if(!navigator.xr){
-document.body.innerHTML="<h2 style='color:white;text-align:center;margin-top:40vh'>WebXR AR not supported on this device</h2>";
-throw new Error("WebXR not supported");
-}
 
 let camera, scene, renderer;
 let controller;
@@ -99,8 +91,7 @@ scene.add(light);
 const geometry = new THREE.RingGeometry(0.15,0.2,32).rotateX(-Math.PI/2);
 
 const material = new THREE.MeshBasicMaterial({
-color:0xffffff,
-side:THREE.DoubleSide
+color:0xffffff
 });
 
 reticle = new THREE.Mesh(geometry,material);
@@ -113,13 +104,12 @@ scene.add(reticle);
 /* CONTROLLER */
 
 controller = renderer.xr.getController(0);
+
 controller.addEventListener("select", placeImage);
 
 scene.add(controller);
 
 renderer.setAnimationLoop(render);
-
-window.addEventListener("resize",onWindowResize);
 
 }
 
@@ -129,12 +119,11 @@ function placeImage(){
 
 if(!reticle.visible) return;
 
-/* ENABLE CORS */
-
 const loader = new THREE.TextureLoader();
+
 loader.crossOrigin = "anonymous";
 
-loader.load("{{ project.file_url }}", function(texture){
+loader.load("{{ project.file_url }}",function(texture){
 
 const geometry = new THREE.PlaneGeometry(0.8,0.8);
 
@@ -161,8 +150,9 @@ function render(timestamp,frame){
 
 if(frame){
 
-const referenceSpace = renderer.xr.getReferenceSpace();
 const session = renderer.xr.getSession();
+
+/* REQUEST HIT TEST */
 
 if(!hitTestSourceRequested){
 
@@ -180,14 +170,20 @@ hitTestSource = source;
 
 session.addEventListener("end",function(){
 
-hitTestSourceRequested = false;
-hitTestSource = null;
+hitTestSourceRequested=false;
+hitTestSource=null;
 
 });
 
-hitTestSourceRequested = true;
+hitTestSourceRequested=true;
 
 }
+
+/* USE LOCAL SPACE */
+
+const referenceSpace = renderer.xr.getReferenceSpace();
+
+/* DETECT SURFACE */
 
 if(hitTestSource){
 
@@ -199,13 +195,13 @@ const hit = hitTestResults[0];
 
 const pose = hit.getPose(referenceSpace);
 
-reticle.visible = true;
+reticle.visible=true;
 
 reticle.matrix.fromArray(pose.transform.matrix);
 
 }else{
 
-reticle.visible = false;
+reticle.visible=false;
 
 }
 
@@ -217,19 +213,7 @@ renderer.render(scene,camera);
 
 }
 
-/* RESIZE */
-
-function onWindowResize(){
-
-camera.aspect = window.innerWidth/window.innerHeight;
-camera.updateProjectionMatrix();
-
-renderer.setSize(window.innerWidth,window.innerHeight);
-
-}
-
 </script>
 
 </body>
 </html>
-```
