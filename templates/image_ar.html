@@ -1,11 +1,9 @@
 <!DOCTYPE html>
 <html>
-
 <head>
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-<title>AR Image Viewer</title>
+<title>Advanced AR Viewer</title>
 
 <script src="https://cdn.jsdelivr.net/npm/three@0.158.0/build/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.158.0/examples/js/webxr/ARButton.js"></script>
@@ -15,8 +13,8 @@
 body{
 margin:0;
 overflow:hidden;
-background:black;
 font-family:Arial;
+background:black;
 }
 
 #info{
@@ -28,7 +26,7 @@ color:white;
 font-size:18px;
 z-index:10;
 background:rgba(0,0,0,.5);
-padding:8px;
+padding:10px;
 }
 
 </style>
@@ -38,14 +36,24 @@ padding:8px;
 <body>
 
 <div id="info">
-Move phone → Tap screen to place image
+Move phone slowly → Tap screen to place image
 </div>
 
 <script>
 
 let camera, scene, renderer;
 let controller;
-let imagePlane;
+let reticle;
+
+let hitTestSource = null;
+let hitTestSourceRequested = false;
+
+let objects = [];
+let selected = null;
+
+let startDistance = 0;
+let startScale = 1;
+let startRotation = 0;
 
 init();
 
@@ -72,13 +80,35 @@ renderer.xr.enabled = true;
 document.body.appendChild(renderer.domElement);
 
 document.body.appendChild(
-ARButton.createButton(renderer)
+ARButton.createButton(renderer,{
+requiredFeatures:["hit-test"],
+optionalFeatures:["dom-overlay"],
+domOverlay:{root:document.body}
+})
 );
 
 /* LIGHT */
 
 const light = new THREE.HemisphereLight(0xffffff,0xbbbbff,1);
 scene.add(light);
+
+/* RETICLE */
+
+const geometry = new THREE.RingGeometry(0.2,0.25,32).rotateX(-Math.PI/2);
+
+reticle = new THREE.Mesh(
+geometry,
+new THREE.MeshBasicMaterial({
+color:0x00ff00,
+transparent:true,
+opacity:0.8
+})
+);
+
+reticle.matrixAutoUpdate=false;
+reticle.visible=false;
+
+scene.add(reticle);
 
 /* CONTROLLER */
 
@@ -88,7 +118,12 @@ scene.add(controller);
 
 renderer.setAnimationLoop(render);
 
-window.addEventListener("resize",onWindowResize);
+window.addEventListener("resize", onWindowResize);
+
+/* TOUCH GESTURES */
+
+window.addEventListener("touchstart", onTouchStart);
+window.addEventListener("touchmove", onTouchMove);
 
 }
 
@@ -96,38 +131,189 @@ window.addEventListener("resize",onWindowResize);
 
 function placeImage(){
 
-if(imagePlane) return;
-
 const loader = new THREE.TextureLoader();
-loader.crossOrigin = "anonymous";
+loader.crossOrigin="anonymous";
 
-loader.load("{{ project.file_url }}",function(texture){
+loader.load("{{ project.file_url }}", texture=>{
 
-const geometry = new THREE.PlaneGeometry(1,1);
+const plane = new THREE.Mesh(
 
-const material = new THREE.MeshBasicMaterial({
+new THREE.PlaneGeometry(1,1),
+
+new THREE.MeshBasicMaterial({
 map:texture,
 transparent:true,
 side:THREE.DoubleSide
-});
+})
 
-imagePlane = new THREE.Mesh(geometry,material);
+);
 
-/* Place 1.5 meters in front of camera */
+/* SHADOW */
 
-imagePlane.position.set(0,0,-1.5);
+const shadow = new THREE.Mesh(
 
-camera.add(imagePlane);
+new THREE.CircleGeometry(0.5,32),
 
-scene.add(camera);
+new THREE.MeshBasicMaterial({
+color:0x000000,
+opacity:0.3,
+transparent:true
+})
+
+);
+
+shadow.rotation.x = -Math.PI/2;
+shadow.position.y = -0.01;
+
+plane.add(shadow);
+
+/* POSITION */
+
+if(reticle.visible){
+
+plane.position.setFromMatrixPosition(reticle.matrix);
+plane.quaternion.setFromRotationMatrix(reticle.matrix);
+
+}else{
+
+/* fallback placement */
+
+plane.position.set(0,0,-1.5);
+
+camera.add(plane);
+
+}
+
+scene.add(plane);
+
+objects.push(plane);
+
+selected = plane;
 
 });
 
 }
 
-/* RENDER */
+/* TOUCH START */
 
-function render(){
+function onTouchStart(e){
+
+if(!selected) return;
+
+if(e.touches.length==2){
+
+startDistance = getDistance(e.touches);
+startScale = selected.scale.x;
+
+startRotation = getAngle(e.touches);
+
+}
+
+}
+
+/* TOUCH MOVE */
+
+function onTouchMove(e){
+
+if(!selected) return;
+
+if(e.touches.length==1){
+
+selected.position.x += e.touches[0].movementX * 0.001;
+selected.position.y -= e.touches[0].movementY * 0.001;
+
+}
+
+if(e.touches.length==2){
+
+const newDistance = getDistance(e.touches);
+
+const scale = startScale * (newDistance/startDistance);
+
+selected.scale.set(scale,scale,scale);
+
+/* ROTATE */
+
+const angle = getAngle(e.touches);
+
+selected.rotation.z += angle-startRotation;
+
+startRotation = angle;
+
+}
+
+}
+
+/* HELPERS */
+
+function getDistance(touches){
+
+let dx = touches[0].clientX - touches[1].clientX;
+let dy = touches[0].clientY - touches[1].clientY;
+
+return Math.sqrt(dx*dx + dy*dy);
+
+}
+
+function getAngle(touches){
+
+return Math.atan2(
+
+touches[1].clientY - touches[0].clientY,
+touches[1].clientX - touches[0].clientX
+
+);
+
+}
+
+/* RENDER LOOP */
+
+function render(timestamp,frame){
+
+if(frame){
+
+const referenceSpace = renderer.xr.getReferenceSpace();
+const session = renderer.xr.getSession();
+
+if(!hitTestSourceRequested){
+
+session.requestReferenceSpace("viewer").then(space=>{
+
+session.requestHitTestSource({space:space}).then(source=>{
+
+hitTestSource = source;
+
+});
+
+});
+
+hitTestSourceRequested=true;
+
+}
+
+if(hitTestSource){
+
+const hitTestResults = frame.getHitTestResults(hitTestSource);
+
+if(hitTestResults.length){
+
+const hit = hitTestResults[0];
+
+const pose = hit.getPose(referenceSpace);
+
+reticle.visible=true;
+
+reticle.matrix.fromArray(pose.transform.matrix);
+
+}else{
+
+reticle.visible=false;
+
+}
+
+}
+
+}
 
 renderer.render(scene,camera);
 
@@ -147,5 +333,4 @@ renderer.setSize(window.innerWidth,window.innerHeight);
 </script>
 
 </body>
-
 </html>
