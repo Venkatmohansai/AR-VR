@@ -1,10 +1,10 @@
-
+```html
 <!DOCTYPE html>
 <html>
 <head>
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ARVR Studio</title>
+<title>ARVR Studio PRO</title>
 
 <style>
 
@@ -14,6 +14,8 @@ overflow:hidden;
 background:black;
 font-family:Arial;
 }
+
+/* TOP MESSAGE */
 
 #info{
 position:absolute;
@@ -26,7 +28,7 @@ padding:8px;
 z-index:10;
 }
 
-/* toolbar */
+/* TOOLBAR */
 
 #toolbar{
 position:fixed;
@@ -46,7 +48,7 @@ color:white;
 font-size:14px;
 }
 
-/* Start AR button */
+/* START AR BUTTON */
 
 button[aria-label="Start AR"]{
 
@@ -89,7 +91,6 @@ Move phone slowly → Tap to place image
 <script type="module">
 
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.158.0/build/three.module.js";
-
 import { ARButton } from "https://cdn.jsdelivr.net/npm/three@0.158.0/examples/jsm/webxr/ARButton.js";
 
 let camera, scene, renderer;
@@ -99,12 +100,16 @@ let reticle;
 let hitTestSource=null;
 let hitTestSourceRequested=false;
 
-let objectPlaced=false;
 let arObject=null;
+let objectPlaced=false;
+
+/* gesture variables */
 
 let startDistance=0;
 let startScale=1;
 let startRotation=0;
+
+let dragging=false;
 
 init();
 
@@ -138,7 +143,7 @@ requiredFeatures:["hit-test"]
 })
 );
 
-/* light */
+/* lighting */
 
 const light=new THREE.HemisphereLight(0xffffff,0xbbbbff,1);
 scene.add(light);
@@ -159,13 +164,14 @@ opacity:.9
 reticle.matrixAutoUpdate=false;
 reticle.visible=false;
 
+/* center dot */
+
 const dot=new THREE.Mesh(
 new THREE.CircleGeometry(0.02,32),
 new THREE.MeshBasicMaterial({color:0xffffff})
 );
 
 dot.rotation.x=-Math.PI/2;
-
 reticle.add(dot);
 
 scene.add(reticle);
@@ -174,6 +180,7 @@ scene.add(reticle);
 
 controller=renderer.xr.getController(0);
 controller.addEventListener("select",placeObject);
+
 scene.add(controller);
 
 renderer.setAnimationLoop(render);
@@ -184,6 +191,7 @@ window.addEventListener("resize",resize);
 
 window.addEventListener("touchstart",touchStart);
 window.addEventListener("touchmove",touchMove);
+window.addEventListener("touchend",()=>dragging=false);
 
 }
 
@@ -236,8 +244,6 @@ arObject.add(shadow);
 arObject.position.setFromMatrixPosition(reticle.matrix);
 arObject.quaternion.setFromRotationMatrix(reticle.matrix);
 
-/* wall lock */
-
 arObject.rotateX(-Math.PI/2);
 
 scene.add(arObject);
@@ -251,6 +257,12 @@ scene.add(arObject);
 function touchStart(e){
 
 if(!arObject) return;
+
+if(e.touches.length==1){
+
+dragging=true;
+
+}
 
 if(e.touches.length==2){
 
@@ -268,6 +280,20 @@ function touchMove(e){
 
 if(!arObject) return;
 
+/* drag */
+
+if(dragging && e.touches.length==1){
+
+let dx=e.touches[0].movementX || 0;
+let dy=e.touches[0].movementY || 0;
+
+arObject.position.x += dx*0.002;
+arObject.position.y -= dy*0.002;
+
+}
+
+/* pinch zoom */
+
 if(e.touches.length==2){
 
 let newDist=getDistance(e.touches);
@@ -276,9 +302,11 @@ let scale=startScale*(newDist/startDistance);
 
 arObject.scale.set(scale,scale,scale);
 
+/* rotate */
+
 let angle=getAngle(e.touches);
 
-arObject.rotation.z+=angle-startRotation;
+arObject.rotation.z += angle-startRotation;
 
 startRotation=angle;
 
@@ -306,7 +334,7 @@ t[1].clientX-t[0].clientX
 
 }
 
-/* screenshot */
+/* capture */
 
 window.capture=function(){
 
@@ -329,6 +357,7 @@ window.resetScene=function(){
 if(arObject){
 
 scene.remove(arObject);
+
 arObject=null;
 
 }
@@ -367,7 +396,6 @@ const hits=frame.getHitTestResults(hitTestSource);
 if(hits.length){
 
 const hit=hits[0];
-
 const pose=hit.getPose(referenceSpace);
 
 reticle.visible=true;
@@ -403,3 +431,4 @@ renderer.setSize(window.innerWidth,window.innerHeight);
 
 </body>
 </html>
+```
