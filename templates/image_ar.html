@@ -5,7 +5,7 @@
 <head>
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ARVR Studio - Advanced AR Viewer</title>
+<title>AR Viewer</title>
 
 <style>
 
@@ -16,7 +16,7 @@ font-family:Arial;
 background:black;
 }
 
-/* TOP MESSAGE */
+/* TOP INFO */
 
 #info{
 position:absolute;
@@ -25,7 +25,7 @@ width:100%;
 text-align:center;
 color:white;
 font-size:16px;
-z-index:10;
+z-index:1000;
 background:rgba(0,0,0,.6);
 padding:8px;
 }
@@ -33,11 +33,12 @@ padding:8px;
 /* TOOLBAR */
 
 #toolbar{
-position:absolute;
-bottom:20px;
+position:fixed;
+bottom:30px;
+left:0;
 width:100%;
 text-align:center;
-z-index:20;
+z-index:2000;
 }
 
 button{
@@ -50,8 +51,30 @@ color:white;
 font-size:14px;
 }
 
-button.delete{
-background:#e63946;
+/* FIX START AR BUTTON */
+
+button[aria-label="Start AR"]{
+
+position:fixed !important;
+bottom:90px !important;
+left:50% !important;
+transform:translateX(-50%) !important;
+
+background:#007bff !important;
+color:white !important;
+
+padding:14px 28px !important;
+
+border-radius:30px !important;
+
+font-size:16px !important;
+
+border:none !important;
+
+opacity:1 !important;
+
+z-index:1500;
+
 }
 
 </style>
@@ -61,14 +84,12 @@ background:#e63946;
 <body>
 
 <div id="info">
-Move phone slowly → Tap to place image
+Move phone slowly → Tap screen to place image
 </div>
 
 <div id="toolbar">
 
 <button onclick="capture()">📷 Capture</button>
-
-<button onclick="deleteObject()" class="delete">🗑 Delete</button>
 
 <button onclick="resetScene()">🔄 Reset</button>
 
@@ -77,6 +98,7 @@ Move phone slowly → Tap to place image
 <script type="module">
 
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.158.0/build/three.module.js";
+
 import { ARButton } from "https://cdn.jsdelivr.net/npm/three@0.158.0/examples/jsm/webxr/ARButton.js";
 
 let camera, scene, renderer;
@@ -86,18 +108,9 @@ let reticle;
 let hitTestSource=null;
 let hitTestSourceRequested=false;
 
-let objects=[];
-let selected=null;
+let imagePlaced=false;
 
-let raycaster=new THREE.Raycaster();
-let pointer=new THREE.Vector2();
-
-/* GESTURE VARIABLES */
-
-let startDistance=0;
-let startScale=1;
-let startRotation=0;
-let dragging=false;
+let placedObject=null;
 
 init();
 
@@ -119,10 +132,14 @@ preserveDrawingBuffer:true
 });
 
 renderer.setPixelRatio(window.devicePixelRatio);
+
 renderer.setSize(window.innerWidth,window.innerHeight);
+
 renderer.xr.enabled=true;
 
 document.body.appendChild(renderer.domElement);
+
+/* START AR BUTTON */
 
 document.body.appendChild(
 ARButton.createButton(renderer,{
@@ -133,32 +150,41 @@ requiredFeatures:["hit-test"]
 /* LIGHT */
 
 const light=new THREE.HemisphereLight(0xffffff,0xbbbbff,1);
+
 scene.add(light);
 
-/* PROFESSIONAL WHITE RETICLE */
+/* WHITE RETICLE */
 
-const ring=new THREE.RingGeometry(0.15,0.18,64).rotateX(-Math.PI/2);
+const ringGeometry=new THREE.RingGeometry(0.15,0.18,64).rotateX(-Math.PI/2);
 
 reticle=new THREE.Mesh(
-ring,
+
+ringGeometry,
+
 new THREE.MeshBasicMaterial({
 color:0xffffff,
 transparent:true,
 opacity:0.9
 })
+
 );
 
 reticle.matrixAutoUpdate=false;
+
 reticle.visible=false;
 
 /* CENTER DOT */
 
 const dot=new THREE.Mesh(
+
 new THREE.CircleGeometry(0.02,32),
+
 new THREE.MeshBasicMaterial({color:0xffffff})
+
 );
 
 dot.rotation.x=-Math.PI/2;
+
 reticle.add(dot);
 
 scene.add(reticle);
@@ -166,18 +192,14 @@ scene.add(reticle);
 /* CONTROLLER */
 
 controller=renderer.xr.getController(0);
+
 controller.addEventListener("select",placeImage);
+
 scene.add(controller);
 
 renderer.setAnimationLoop(render);
 
 window.addEventListener("resize",resize);
-
-/* TOUCH EVENTS */
-
-window.addEventListener("touchstart",touchStart);
-window.addEventListener("touchmove",touchMove);
-window.addEventListener("touchend",touchEnd);
 
 }
 
@@ -186,6 +208,10 @@ window.addEventListener("touchend",touchEnd);
 function placeImage(){
 
 if(!reticle.visible) return;
+
+if(imagePlaced) return;
+
+imagePlaced=true;
 
 const loader=new THREE.TextureLoader();
 
@@ -220,6 +246,7 @@ transparent:true
 );
 
 shadow.rotation.x=-Math.PI/2;
+
 shadow.position.y=-0.01;
 
 plane.add(shadow);
@@ -227,131 +254,22 @@ plane.add(shadow);
 /* POSITION */
 
 plane.position.setFromMatrixPosition(reticle.matrix);
+
 plane.quaternion.setFromRotationMatrix(reticle.matrix);
+
+/* FIX ORIENTATION */
 
 plane.rotateX(-Math.PI/2);
 
 scene.add(plane);
 
-objects.push(plane);
+placedObject=plane;
 
 });
 
 }
 
-/* OBJECT SELECTION */
-
-function selectObject(x,y){
-
-pointer.x=(x/window.innerWidth)*2-1;
-pointer.y=-(y/window.innerHeight)*2+1;
-
-raycaster.setFromCamera(pointer,camera);
-
-const intersects=raycaster.intersectObjects(objects);
-
-if(intersects.length){
-
-selected=intersects[0].object;
-
-selected.material.emissive=new THREE.Color(0x222222);
-
-}else{
-
-selected=null;
-
-}
-
-}
-
-/* TOUCH START */
-
-function touchStart(e){
-
-if(e.touches.length==1){
-
-selectObject(e.touches[0].clientX,e.touches[0].clientY);
-
-dragging=true;
-
-}
-
-if(e.touches.length==2 && selected){
-
-startDistance=getDistance(e.touches);
-startScale=selected.scale.x;
-startRotation=getAngle(e.touches);
-
-}
-
-}
-
-/* TOUCH MOVE */
-
-function touchMove(e){
-
-if(!selected) return;
-
-if(e.touches.length==1 && dragging){
-
-selected.position.x+=(e.touches[0].movementX||0)*0.002;
-selected.position.y-=(e.touches[0].movementY||0)*0.002;
-
-}
-
-if(e.touches.length==2){
-
-let dist=getDistance(e.touches);
-
-let scale=startScale*(dist/startDistance);
-
-selected.scale.set(scale,scale,scale);
-
-let angle=getAngle(e.touches);
-
-selected.rotation.z+=angle-startRotation;
-
-startRotation=angle;
-
-}
-
-}
-
-/* TOUCH END */
-
-function touchEnd(){
-
-dragging=false;
-
-}
-
-/* DELETE OBJECT */
-
-window.deleteObject=function(){
-
-if(selected){
-
-scene.remove(selected);
-
-objects=objects.filter(o=>o!==selected);
-
-selected=null;
-
-}
-
-}
-
-/* RESET */
-
-window.resetScene=function(){
-
-objects.forEach(o=>scene.remove(o));
-objects=[];
-selected=null;
-
-}
-
-/* SCREENSHOT */
+/* CAPTURE SCREENSHOT */
 
 window.capture=function(){
 
@@ -367,23 +285,19 @@ link.click();
 
 }
 
-/* HELPER FUNCTIONS */
+/* RESET */
 
-function getDistance(t){
+window.resetScene=function(){
 
-let dx=t[0].clientX-t[1].clientX;
-let dy=t[0].clientY-t[1].clientY;
+if(placedObject){
 
-return Math.sqrt(dx*dx+dy*dy);
+scene.remove(placedObject);
+
+placedObject=null;
 
 }
 
-function getAngle(t){
-
-return Math.atan2(
-t[1].clientY-t[0].clientY,
-t[1].clientX-t[0].clientX
-);
+imagePlaced=false;
 
 }
 
@@ -394,6 +308,7 @@ function render(timestamp,frame){
 if(frame){
 
 const referenceSpace=renderer.xr.getReferenceSpace();
+
 const session=renderer.xr.getSession();
 
 if(!hitTestSourceRequested){
@@ -401,7 +316,9 @@ if(!hitTestSourceRequested){
 session.requestReferenceSpace("viewer").then(space=>{
 
 session.requestHitTestSource({space:space}).then(source=>{
+
 hitTestSource=source;
+
 });
 
 });
@@ -417,9 +334,11 @@ const hits=frame.getHitTestResults(hitTestSource);
 if(hits.length){
 
 const hit=hits[0];
+
 const pose=hit.getPose(referenceSpace);
 
 reticle.visible=true;
+
 reticle.matrix.fromArray(pose.transform.matrix);
 
 }else{
@@ -441,6 +360,7 @@ renderer.render(scene,camera);
 function resize(){
 
 camera.aspect=window.innerWidth/window.innerHeight;
+
 camera.updateProjectionMatrix();
 
 renderer.setSize(window.innerWidth,window.innerHeight);
