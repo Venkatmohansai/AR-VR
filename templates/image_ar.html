@@ -43,6 +43,11 @@ Move phone to detect wall or floor → Tap screen to place image
 
 <script>
 
+if(!navigator.xr){
+document.body.innerHTML="<h2 style='color:white;text-align:center;margin-top:40vh'>WebXR AR not supported on this device</h2>";
+throw new Error("WebXR not supported");
+}
+
 let camera, scene, renderer;
 let controller;
 let reticle;
@@ -70,7 +75,6 @@ alpha:true
 
 renderer.setPixelRatio(window.devicePixelRatio);
 renderer.setSize(window.innerWidth,window.innerHeight);
-
 renderer.xr.enabled = true;
 
 document.body.appendChild(renderer.domElement);
@@ -79,7 +83,9 @@ document.body.appendChild(renderer.domElement);
 
 document.body.appendChild(
 ARButton.createButton(renderer,{
-requiredFeatures:["hit-test"]
+requiredFeatures:["hit-test"],
+optionalFeatures:["dom-overlay"],
+domOverlay:{root:document.body}
 })
 );
 
@@ -99,8 +105,8 @@ side:THREE.DoubleSide
 
 reticle = new THREE.Mesh(geometry,material);
 
-reticle.matrixAutoUpdate = false;
-reticle.visible = false;
+reticle.matrixAutoUpdate=false;
+reticle.visible=false;
 
 scene.add(reticle);
 
@@ -123,7 +129,12 @@ function placeImage(){
 
 if(!reticle.visible) return;
 
-const texture = new THREE.TextureLoader().load("{{ project.file_url }}");
+/* ENABLE CORS */
+
+const loader = new THREE.TextureLoader();
+loader.crossOrigin = "anonymous";
+
+loader.load("{{ project.file_url }}", function(texture){
 
 const geometry = new THREE.PlaneGeometry(0.8,0.8);
 
@@ -140,6 +151,8 @@ plane.quaternion.setFromRotationMatrix(reticle.matrix);
 
 scene.add(plane);
 
+});
+
 }
 
 /* RENDER LOOP */
@@ -153,10 +166,10 @@ const session = renderer.xr.getSession();
 
 if(!hitTestSourceRequested){
 
-session.requestReferenceSpace("viewer").then(function(referenceSpace){
+session.requestReferenceSpace("viewer").then(function(space){
 
 session.requestHitTestSource({
-space:referenceSpace
+space:space
 }).then(function(source){
 
 hitTestSource = source;
