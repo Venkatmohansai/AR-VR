@@ -1,390 +1,225 @@
 <!DOCTYPE html>
 <html>
-<head>
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Wall AR Studio</title>
 
-<script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
+<head>
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Wall AR</title>
+
+<script src="https://cdn.jsdelivr.net/npm/three@0.158.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.158.0/examples/js/webxr/ARButton.js"></script>
 
 <style>
 
 body{
 margin:0;
 overflow:hidden;
-font-family:Segoe UI;
+font-family:Arial;
 background:black;
 }
 
-/* CAMERA */
-
-video{
-position:fixed;
-top:0;
-left:0;
-width:100vw;
-height:100vh;
-object-fit:cover;
-z-index:0;
-}
-
-/* HEADER */
-
-.title{
-position:fixed;
+#info{
+position:absolute;
 top:20px;
-left:50%;
-transform:translateX(-50%);
-background:rgba(0,0,0,.6);
-color:white;
-padding:10px 24px;
-border-radius:30px;
-backdrop-filter:blur(12px);
-z-index:20;
-}
-
-/* TOOLBAR */
-
-.toolbar{
-position:fixed;
-bottom:90px;
-left:50%;
-transform:translateX(-50%);
-display:flex;
-align-items:center;
-gap:14px;
-background:rgba(20,20,20,.7);
-padding:12px 22px;
-border-radius:50px;
-backdrop-filter:blur(14px);
-z-index:20;
-}
-
-/* COLOR BOX */
-
-.colorPreview{
-width:36px;
-height:36px;
-border-radius:8px;
-border:2px solid white;
-cursor:pointer;
-}
-
-/* BUTTON */
-
-.toolBtn{
-background:#06b6d4;
-border:none;
-padding:10px 18px;
-border-radius:20px;
-color:white;
-cursor:pointer;
-}
-
-/* CAPTURE */
-
-.captureBtn{
-position:fixed;
-bottom:30px;
-left:50%;
-transform:translateX(-50%);
-background:#0072ff;
-border:none;
-padding:16px 60px;
-border-radius:40px;
+width:100%;
+text-align:center;
 color:white;
 font-size:18px;
-cursor:pointer;
-z-index:20;
+z-index:10;
+background:rgba(0,0,0,.5);
+padding:8px;
 }
-
-/* WALL PLATE */
-
-.arPlate{
-position:fixed;
-width:260px;
-height:180px;
-border-radius:16px;
-cursor:grab;
-box-shadow:0 20px 60px rgba(0,0,0,.8);
-opacity:.8;
-}
-
-/* ACTIVE */
-
-.arPlate.active{
-outline:2px solid #00e5ff;
-}
-
-/* DELETE */
-
-.deleteBtn{
-position:absolute;
-top:-12px;
-right:-12px;
-background:red;
-color:white;
-width:26px;
-height:26px;
-border-radius:50%;
-display:flex;
-align-items:center;
-justify-content:center;
-opacity:0;
-pointer-events:none;
-}
-
-.arPlate.active .deleteBtn{
-opacity:1;
-pointer-events:auto;
-}
-
-/* RESIZE HANDLES */
-
-.handle{
-position:absolute;
-width:14px;
-height:14px;
-background:#00e5ff;
-border-radius:50%;
-opacity:0;
-}
-
-.arPlate.active .handle{
-opacity:1;
-}
-
-.tl{top:-7px;left:-7px;cursor:nwse-resize;}
-.tr{top:-7px;right:-7px;cursor:nesw-resize;}
-.bl{bottom:-7px;left:-7px;cursor:nesw-resize;}
-.br{bottom:-7px;right:-7px;cursor:nwse-resize;}
 
 </style>
+
 </head>
 
 <body>
 
-<div class="title">🎨 Wall AR Studio</div>
-
-<div class="toolbar">
-
-<input type="color" id="colorPick" value="#00bcd4" style="display:none">
-
-<div class="colorPreview" id="colorBox"></div>
-
-<button class="toolBtn" onclick="addColor()">Add Paint</button>
-
+<div id="info">
+Move phone slowly → Tap screen to place image
 </div>
-
-<button class="captureBtn" onclick="capture()">📸 Capture</button>
 
 <script>
 
-/* CAMERA */
+let camera, scene, renderer;
+let controller;
+let reticle;
 
-async function startCamera(){
+let hitTestSource = null;
+let hitTestSourceRequested = false;
 
-const stream=await navigator.mediaDevices.getUserMedia({
-video:{facingMode:{ideal:"environment"}}
+init();
+
+function init(){
+
+scene = new THREE.Scene();
+
+camera = new THREE.PerspectiveCamera(
+70,
+window.innerWidth / window.innerHeight,
+0.01,
+20
+);
+
+renderer = new THREE.WebGLRenderer({
+antialias:true,
+alpha:true
+});
+
+renderer.setPixelRatio(window.devicePixelRatio);
+renderer.setSize(window.innerWidth, window.innerHeight);
+
+renderer.xr.enabled = true;
+
+document.body.appendChild(renderer.domElement);
+
+document.body.appendChild(
+ARButton.createButton(renderer,{
+requiredFeatures:["hit-test"]
 })
+);
 
-let v=document.createElement("video")
-v.srcObject=stream
-v.autoplay=true
-v.playsInline=true
+/* LIGHT */
 
-document.body.prepend(v)
+const light = new THREE.HemisphereLight(0xffffff,0xbbbbff,1);
+scene.add(light);
 
-}
+/* RETICLE */
 
-window.onload=startCamera
+const geometry = new THREE.RingGeometry(0.15,0.2,32).rotateX(-Math.PI/2);
 
+const material = new THREE.MeshBasicMaterial({
+color:0xffffff
+});
 
-/* COLOR UI */
+reticle = new THREE.Mesh(geometry,material);
 
-let colorPick=document.getElementById("colorPick")
-let colorBox=document.getElementById("colorBox")
+reticle.matrixAutoUpdate=false;
+reticle.visible=false;
 
-colorBox.style.background=colorPick.value
+scene.add(reticle);
 
-colorBox.onclick=()=>colorPick.click()
+/* CONTROLLER */
 
-colorPick.oninput=()=>{
-colorBox.style.background=colorPick.value
-}
+controller = renderer.xr.getController(0);
+controller.addEventListener("select", placeImage);
 
+scene.add(controller);
 
-/* CREATE PLATE */
+renderer.setAnimationLoop(render);
 
-function createPlate(){
-
-let div=document.createElement("div")
-div.className="arPlate"
-div.style.top="40%"
-div.style.left="40%"
-
-/* activate */
-
-div.onclick=e=>{
-e.stopPropagation()
-
-document.querySelectorAll(".arPlate")
-.forEach(p=>p.classList.remove("active"))
-
-div.classList.add("active")
-}
-
-/* delete */
-
-let del=document.createElement("div")
-del.className="deleteBtn"
-del.innerHTML="✖"
-del.onclick=()=>div.remove()
-
-div.appendChild(del)
-
-/* resize handles */
-
-["tl","tr","bl","br"].forEach(c=>{
-let h=document.createElement("div")
-h.className="handle "+c
-div.appendChild(h)
-resize(div,h,c)
-})
-
-drag(div)
-
-document.body.appendChild(div)
-
-return div
+window.addEventListener("resize", onWindowResize);
 
 }
 
+/* PLACE IMAGE */
 
-/* ADD COLOR */
+function placeImage(){
 
-function addColor(){
+if(!reticle.visible) return;
 
-let p=createPlate()
+const loader = new THREE.TextureLoader();
 
-p.style.background=colorPick.value
-p.style.opacity=".8"
+loader.crossOrigin = "anonymous";
 
-}
+loader.load("{{ project.file_url }}",function(texture){
 
+const geometry = new THREE.PlaneGeometry(1,1);
 
-/* DRAG */
+const material = new THREE.MeshBasicMaterial({
+map:texture,
+transparent:true,
+side:THREE.DoubleSide
+});
 
-function drag(el){
+const plane = new THREE.Mesh(geometry,material);
 
-let offsetX,offsetY
+plane.position.setFromMatrixPosition(reticle.matrix);
 
-el.onmousedown=e=>{
+plane.quaternion.setFromRotationMatrix(reticle.matrix);
 
-offsetX=e.clientX-el.offsetLeft
-offsetY=e.clientY-el.offsetTop
+scene.add(plane);
 
-document.onmousemove=e=>{
-el.style.left=e.clientX-offsetX+"px"
-el.style.top=e.clientY-offsetY+"px"
-}
-
-document.onmouseup=()=>{
-document.onmousemove=null
-}
+});
 
 }
 
+/* RENDER LOOP */
+
+function render(timestamp,frame){
+
+if(frame){
+
+const referenceSpace = renderer.xr.getReferenceSpace();
+
+const session = renderer.xr.getSession();
+
+/* REQUEST HIT TEST ONCE */
+
+if(!hitTestSourceRequested){
+
+session.requestReferenceSpace("viewer").then(function(space){
+
+session.requestHitTestSource({space:space}).then(function(source){
+
+hitTestSource = source;
+
+});
+
+});
+
+session.addEventListener("end",function(){
+
+hitTestSourceRequested=false;
+hitTestSource=null;
+
+});
+
+hitTestSourceRequested=true;
+
 }
 
+/* HIT TEST */
+
+if(hitTestSource){
+
+const hitTestResults = frame.getHitTestResults(hitTestSource);
+
+if(hitTestResults.length){
+
+const hit = hitTestResults[0];
+
+const pose = hit.getPose(referenceSpace);
+
+reticle.visible=true;
+
+reticle.matrix.fromArray(pose.transform.matrix);
+
+}else{
+
+reticle.visible=false;
+
+}
+
+}
+
+}
+
+renderer.render(scene,camera);
+
+}
 
 /* RESIZE */
 
-function resize(el,h,type){
+function onWindowResize(){
 
-h.onmousedown=e=>{
+camera.aspect = window.innerWidth/window.innerHeight;
 
-e.stopPropagation()
+camera.updateProjectionMatrix();
 
-let startX=e.clientX
-let startY=e.clientY
-
-let startW=el.offsetWidth
-let startH=el.offsetHeight
-
-document.onmousemove=e=>{
-
-let dx=e.clientX-startX
-let dy=e.clientY-startY
-
-if(type==="br"){
-el.style.width=startW+dx+"px"
-el.style.height=startH+dy+"px"
-}
-
-if(type==="bl"){
-el.style.width=startW-dx+"px"
-el.style.height=startH+dy+"px"
-}
-
-if(type==="tr"){
-el.style.width=startW+dx+"px"
-el.style.height=startH-dy+"px"
-}
-
-if(type==="tl"){
-el.style.width=startW-dx+"px"
-el.style.height=startH-dy+"px"
-}
-
-}
-
-document.onmouseup=()=>{
-document.onmousemove=null
-}
-
-}
-
-}
-
-
-/* CAPTURE */
-
-async function capture(){
-
-const canvas=document.createElement("canvas")
-canvas.width=window.innerWidth
-canvas.height=window.innerHeight
-
-const ctx=canvas.getContext("2d")
-
-let video=document.querySelector("video")
-
-ctx.drawImage(video,0,0,canvas.width,canvas.height)
-
-let plates=document.querySelectorAll(".arPlate")
-
-for(let plate of plates){
-
-let rect=plate.getBoundingClientRect()
-
-let plateCanvas=await html2canvas(plate)
-
-ctx.drawImage(
-plateCanvas,
-rect.left,
-rect.top,
-rect.width,
-rect.height
-)
-
-}
-
-const link=document.createElement("a")
-
-link.download="wall_ar_capture.png"
-link.href=canvas.toDataURL()
-
-link.click()
+renderer.setSize(window.innerWidth,window.innerHeight);
 
 }
 
