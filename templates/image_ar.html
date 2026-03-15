@@ -1,6 +1,7 @@
-```html id="android1"
+```html
 <!DOCTYPE html>
 <html>
+
 <head>
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -26,6 +27,8 @@ text-align:center;
 color:white;
 font-size:18px;
 z-index:10;
+background:rgba(0,0,0,.4);
+padding:8px;
 }
 
 </style>
@@ -35,7 +38,7 @@ z-index:10;
 <body>
 
 <div id="info">
-Move phone to detect wall or floor → Tap to place image
+Move phone to detect wall or floor → Tap screen to place image
 </div>
 
 <script>
@@ -43,6 +46,7 @@ Move phone to detect wall or floor → Tap to place image
 let camera, scene, renderer;
 let controller;
 let reticle;
+
 let hitTestSource = null;
 let hitTestSourceRequested = false;
 
@@ -54,7 +58,7 @@ scene = new THREE.Scene();
 
 camera = new THREE.PerspectiveCamera(
 70,
-window.innerWidth / window.innerHeight,
+window.innerWidth/window.innerHeight,
 0.01,
 20
 );
@@ -64,13 +68,20 @@ antialias:true,
 alpha:true
 });
 
-renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setPixelRatio(window.devicePixelRatio);
+renderer.setSize(window.innerWidth,window.innerHeight);
+
 renderer.xr.enabled = true;
 
 document.body.appendChild(renderer.domElement);
-document.body.appendChild(ARButton.createButton(renderer,{
+
+/* AR BUTTON */
+
+document.body.appendChild(
+ARButton.createButton(renderer,{
 requiredFeatures:["hit-test"]
-}));
+})
+);
 
 /* LIGHT */
 
@@ -81,24 +92,28 @@ scene.add(light);
 
 const geometry = new THREE.RingGeometry(0.15,0.2,32).rotateX(-Math.PI/2);
 
-const material = new THREE.MeshBasicMaterial();
+const material = new THREE.MeshBasicMaterial({
+color:0xffffff,
+side:THREE.DoubleSide
+});
 
 reticle = new THREE.Mesh(geometry,material);
 
-reticle.matrixAutoUpdate=false;
-reticle.visible=false;
+reticle.matrixAutoUpdate = false;
+reticle.visible = false;
 
 scene.add(reticle);
 
 /* CONTROLLER */
 
 controller = renderer.xr.getController(0);
-
 controller.addEventListener("select", placeImage);
 
 scene.add(controller);
 
 renderer.setAnimationLoop(render);
+
+window.addEventListener("resize",onWindowResize);
 
 }
 
@@ -114,13 +129,13 @@ const geometry = new THREE.PlaneGeometry(0.8,0.8);
 
 const material = new THREE.MeshBasicMaterial({
 map:texture,
+transparent:true,
 side:THREE.DoubleSide
 });
 
 const plane = new THREE.Mesh(geometry,material);
 
 plane.position.setFromMatrixPosition(reticle.matrix);
-
 plane.quaternion.setFromRotationMatrix(reticle.matrix);
 
 scene.add(plane);
@@ -136,15 +151,24 @@ if(frame){
 const referenceSpace = renderer.xr.getReferenceSpace();
 const session = renderer.xr.getSession();
 
-if(hitTestSourceRequested === false){
+if(!hitTestSourceRequested){
 
 session.requestReferenceSpace("viewer").then(function(referenceSpace){
 
-session.requestHitTestSource({space:referenceSpace}).then(function(source){
+session.requestHitTestSource({
+space:referenceSpace
+}).then(function(source){
 
 hitTestSource = source;
 
 });
+
+});
+
+session.addEventListener("end",function(){
+
+hitTestSourceRequested = false;
+hitTestSource = null;
 
 });
 
@@ -177,6 +201,17 @@ reticle.visible = false;
 }
 
 renderer.render(scene,camera);
+
+}
+
+/* RESIZE */
+
+function onWindowResize(){
+
+camera.aspect = window.innerWidth/window.innerHeight;
+camera.updateProjectionMatrix();
+
+renderer.setSize(window.innerWidth,window.innerHeight);
 
 }
 
