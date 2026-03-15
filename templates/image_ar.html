@@ -1,22 +1,19 @@
-```html
+
 <!DOCTYPE html>
 <html>
-
 <head>
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>AR Viewer</title>
+<title>ARVR Studio</title>
 
 <style>
 
 body{
 margin:0;
 overflow:hidden;
-font-family:Arial;
 background:black;
+font-family:Arial;
 }
-
-/* TOP INFO */
 
 #info{
 position:absolute;
@@ -24,21 +21,19 @@ top:10px;
 width:100%;
 text-align:center;
 color:white;
-font-size:16px;
-z-index:1000;
 background:rgba(0,0,0,.6);
 padding:8px;
+z-index:10;
 }
 
-/* TOOLBAR */
+/* toolbar */
 
 #toolbar{
 position:fixed;
 bottom:30px;
-left:0;
 width:100%;
 text-align:center;
-z-index:2000;
+z-index:20;
 }
 
 button{
@@ -51,29 +46,25 @@ color:white;
 font-size:14px;
 }
 
-/* FIX START AR BUTTON */
+/* Start AR button */
 
 button[aria-label="Start AR"]{
 
 position:fixed !important;
-bottom:90px !important;
-left:50% !important;
-transform:translateX(-50%) !important;
+bottom:100px !important;
+left:50%;
+transform:translateX(-50%);
 
 background:#007bff !important;
 color:white !important;
 
-padding:14px 28px !important;
+padding:14px 30px !important;
 
 border-radius:30px !important;
 
 font-size:16px !important;
 
-border:none !important;
-
-opacity:1 !important;
-
-z-index:1500;
+z-index:100;
 
 }
 
@@ -84,7 +75,7 @@ z-index:1500;
 <body>
 
 <div id="info">
-Move phone slowly → Tap screen to place image
+Move phone slowly → Tap to place image
 </div>
 
 <div id="toolbar">
@@ -108,9 +99,12 @@ let reticle;
 let hitTestSource=null;
 let hitTestSourceRequested=false;
 
-let imagePlaced=false;
+let objectPlaced=false;
+let arObject=null;
 
-let placedObject=null;
+let startDistance=0;
+let startScale=1;
+let startRotation=0;
 
 init();
 
@@ -132,14 +126,11 @@ preserveDrawingBuffer:true
 });
 
 renderer.setPixelRatio(window.devicePixelRatio);
-
 renderer.setSize(window.innerWidth,window.innerHeight);
 
 renderer.xr.enabled=true;
 
 document.body.appendChild(renderer.domElement);
-
-/* START AR BUTTON */
 
 document.body.appendChild(
 ARButton.createButton(renderer,{
@@ -147,40 +138,30 @@ requiredFeatures:["hit-test"]
 })
 );
 
-/* LIGHT */
+/* light */
 
 const light=new THREE.HemisphereLight(0xffffff,0xbbbbff,1);
-
 scene.add(light);
 
-/* WHITE RETICLE */
+/* reticle */
 
-const ringGeometry=new THREE.RingGeometry(0.15,0.18,64).rotateX(-Math.PI/2);
+const ring=new THREE.RingGeometry(0.15,0.18,64).rotateX(-Math.PI/2);
 
 reticle=new THREE.Mesh(
-
-ringGeometry,
-
+ring,
 new THREE.MeshBasicMaterial({
 color:0xffffff,
 transparent:true,
-opacity:0.9
+opacity:.9
 })
-
 );
 
 reticle.matrixAutoUpdate=false;
-
 reticle.visible=false;
 
-/* CENTER DOT */
-
 const dot=new THREE.Mesh(
-
 new THREE.CircleGeometry(0.02,32),
-
 new THREE.MeshBasicMaterial({color:0xffffff})
-
 );
 
 dot.rotation.x=-Math.PI/2;
@@ -189,29 +170,32 @@ reticle.add(dot);
 
 scene.add(reticle);
 
-/* CONTROLLER */
+/* controller */
 
 controller=renderer.xr.getController(0);
-
-controller.addEventListener("select",placeImage);
-
+controller.addEventListener("select",placeObject);
 scene.add(controller);
 
 renderer.setAnimationLoop(render);
 
 window.addEventListener("resize",resize);
 
+/* touch gestures */
+
+window.addEventListener("touchstart",touchStart);
+window.addEventListener("touchmove",touchMove);
+
 }
 
-/* PLACE IMAGE */
+/* place object */
 
-function placeImage(){
+function placeObject(){
 
 if(!reticle.visible) return;
 
-if(imagePlaced) return;
+if(objectPlaced) return;
 
-imagePlaced=true;
+objectPlaced=true;
 
 const loader=new THREE.TextureLoader();
 
@@ -229,47 +213,100 @@ transparent:true,
 side:THREE.DoubleSide
 });
 
-const plane=new THREE.Mesh(geometry,material);
+arObject=new THREE.Mesh(geometry,material);
 
-/* SHADOW */
+/* shadow */
 
 const shadow=new THREE.Mesh(
-
-new THREE.CircleGeometry(0.5,32),
-
+new THREE.CircleGeometry(.5,32),
 new THREE.MeshBasicMaterial({
 color:0x000000,
-opacity:0.35,
+opacity:.35,
 transparent:true
 })
-
 );
 
 shadow.rotation.x=-Math.PI/2;
+shadow.position.y=-.01;
 
-shadow.position.y=-0.01;
+arObject.add(shadow);
 
-plane.add(shadow);
+/* position */
 
-/* POSITION */
+arObject.position.setFromMatrixPosition(reticle.matrix);
+arObject.quaternion.setFromRotationMatrix(reticle.matrix);
 
-plane.position.setFromMatrixPosition(reticle.matrix);
+/* wall lock */
 
-plane.quaternion.setFromRotationMatrix(reticle.matrix);
+arObject.rotateX(-Math.PI/2);
 
-/* FIX ORIENTATION */
-
-plane.rotateX(-Math.PI/2);
-
-scene.add(plane);
-
-placedObject=plane;
+scene.add(arObject);
 
 });
 
 }
 
-/* CAPTURE SCREENSHOT */
+/* gestures */
+
+function touchStart(e){
+
+if(!arObject) return;
+
+if(e.touches.length==2){
+
+startDistance=getDistance(e.touches);
+
+startScale=arObject.scale.x;
+
+startRotation=getAngle(e.touches);
+
+}
+
+}
+
+function touchMove(e){
+
+if(!arObject) return;
+
+if(e.touches.length==2){
+
+let newDist=getDistance(e.touches);
+
+let scale=startScale*(newDist/startDistance);
+
+arObject.scale.set(scale,scale,scale);
+
+let angle=getAngle(e.touches);
+
+arObject.rotation.z+=angle-startRotation;
+
+startRotation=angle;
+
+}
+
+}
+
+/* helpers */
+
+function getDistance(t){
+
+let dx=t[0].clientX-t[1].clientX;
+let dy=t[0].clientY-t[1].clientY;
+
+return Math.sqrt(dx*dx+dy*dy);
+
+}
+
+function getAngle(t){
+
+return Math.atan2(
+t[1].clientY-t[0].clientY,
+t[1].clientX-t[0].clientX
+);
+
+}
+
+/* screenshot */
 
 window.capture=function(){
 
@@ -285,30 +322,28 @@ link.click();
 
 }
 
-/* RESET */
+/* reset */
 
 window.resetScene=function(){
 
-if(placedObject){
+if(arObject){
 
-scene.remove(placedObject);
-
-placedObject=null;
-
-}
-
-imagePlaced=false;
+scene.remove(arObject);
+arObject=null;
 
 }
 
-/* RENDER LOOP */
+objectPlaced=false;
+
+}
+
+/* render loop */
 
 function render(timestamp,frame){
 
 if(frame){
 
 const referenceSpace=renderer.xr.getReferenceSpace();
-
 const session=renderer.xr.getSession();
 
 if(!hitTestSourceRequested){
@@ -316,9 +351,7 @@ if(!hitTestSourceRequested){
 session.requestReferenceSpace("viewer").then(space=>{
 
 session.requestHitTestSource({space:space}).then(source=>{
-
 hitTestSource=source;
-
 });
 
 });
@@ -355,12 +388,11 @@ renderer.render(scene,camera);
 
 }
 
-/* RESIZE */
+/* resize */
 
 function resize(){
 
 camera.aspect=window.innerWidth/window.innerHeight;
-
 camera.updateProjectionMatrix();
 
 renderer.setSize(window.innerWidth,window.innerHeight);
@@ -370,6 +402,4 @@ renderer.setSize(window.innerWidth,window.innerHeight);
 </script>
 
 </body>
-
 </html>
-```
