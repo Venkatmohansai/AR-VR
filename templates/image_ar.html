@@ -3,7 +3,7 @@
 <head>
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Android WebXR AR</title>
+<title>WebXR Image AR</title>
 
 <script src="https://cdn.jsdelivr.net/npm/three@0.158.0/build/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.158.0/examples/js/webxr/ARButton.js"></script>
@@ -13,30 +13,47 @@
 body{
 margin:0;
 overflow:hidden;
-font-family:Arial;
 background:black;
+font-family:Arial;
 }
 
 #info{
 position:absolute;
-top:20px;
+top:15px;
 width:100%;
 text-align:center;
 color:white;
 font-size:18px;
 z-index:10;
 background:rgba(0,0,0,.5);
-padding:10px;
+padding:8px;
+}
+
+#start{
+position:absolute;
+bottom:40px;
+left:50%;
+transform:translateX(-50%);
+padding:16px 40px;
+font-size:18px;
+border:none;
+border-radius:40px;
+background:#0072ff;
+color:white;
+z-index:20;
 }
 
 </style>
+
 </head>
 
 <body>
 
 <div id="info">
-Move phone slowly → Wait for circle → Tap screen to place image
+Move phone slowly → Tap screen to place image
 </div>
+
+<button id="start">Start AR</button>
 
 <script>
 
@@ -44,57 +61,44 @@ let camera, scene, renderer;
 let controller;
 let reticle;
 
-let hitTestSource = null;
-let hitTestSourceRequested = false;
+let hitTestSource=null;
+let hitTestSourceRequested=false;
 
 init();
 
 function init(){
 
-scene = new THREE.Scene();
+scene=new THREE.Scene();
 
-camera = new THREE.PerspectiveCamera(
+camera=new THREE.PerspectiveCamera(
 70,
 window.innerWidth/window.innerHeight,
 0.01,
 20
 );
 
-renderer = new THREE.WebGLRenderer({
+renderer=new THREE.WebGLRenderer({
 antialias:true,
 alpha:true
 });
 
 renderer.setPixelRatio(window.devicePixelRatio);
 renderer.setSize(window.innerWidth,window.innerHeight);
-renderer.xr.enabled = true;
+renderer.xr.enabled=true;
 
 document.body.appendChild(renderer.domElement);
 
-/* AR BUTTON */
-
-document.body.appendChild(
-ARButton.createButton(renderer,{
-requiredFeatures:["hit-test"],
-optionalFeatures:["dom-overlay"],
-domOverlay:{root:document.body}
-})
-);
-
-/* LIGHT */
-
-const light = new THREE.HemisphereLight(0xffffff,0xbbbbff,1);
+const light=new THREE.HemisphereLight(0xffffff,0xbbbbff,1);
 scene.add(light);
 
 /* RETICLE */
 
-const geometry = new THREE.RingGeometry(0.15,0.2,32).rotateX(-Math.PI/2);
+const geometry=new THREE.RingGeometry(0.15,0.2,32).rotateX(-Math.PI/2);
 
-const material = new THREE.MeshBasicMaterial({
-color:0xffffff
-});
-
-reticle = new THREE.Mesh(geometry,material);
+reticle=new THREE.Mesh(
+geometry,
+new THREE.MeshBasicMaterial({color:0xffffff})
+);
 
 reticle.matrixAutoUpdate=false;
 reticle.visible=false;
@@ -103,15 +107,27 @@ scene.add(reticle);
 
 /* CONTROLLER */
 
-controller = renderer.xr.getController(0);
-
-controller.addEventListener("select", placeImage);
-
+controller=renderer.xr.getController(0);
+controller.addEventListener("select",placeImage);
 scene.add(controller);
 
 renderer.setAnimationLoop(render);
 
 }
+
+/* START AR */
+
+document.getElementById("start").onclick=async()=>{
+
+const session=await navigator.xr.requestSession("immersive-ar",{
+requiredFeatures:["hit-test"]
+});
+
+renderer.xr.setSession(session);
+
+document.getElementById("start").style.display="none";
+
+};
 
 /* PLACE IMAGE */
 
@@ -119,21 +135,19 @@ function placeImage(){
 
 if(!reticle.visible) return;
 
-const loader = new THREE.TextureLoader();
+const loader=new THREE.TextureLoader();
+loader.crossOrigin="anonymous";
 
-loader.crossOrigin = "anonymous";
+loader.load("{{ project.file_url }}",(texture)=>{
 
-loader.load("{{ project.file_url }}",function(texture){
-
-const geometry = new THREE.PlaneGeometry(0.8,0.8);
-
-const material = new THREE.MeshBasicMaterial({
+const plane=new THREE.Mesh(
+new THREE.PlaneGeometry(0.8,0.8),
+new THREE.MeshBasicMaterial({
 map:texture,
 transparent:true,
 side:THREE.DoubleSide
-});
-
-const plane = new THREE.Mesh(geometry,material);
+})
+);
 
 plane.position.setFromMatrixPosition(reticle.matrix);
 plane.quaternion.setFromRotationMatrix(reticle.matrix);
@@ -150,28 +164,19 @@ function render(timestamp,frame){
 
 if(frame){
 
-const session = renderer.xr.getSession();
+const session=renderer.xr.getSession();
 
-/* REQUEST HIT TEST */
+const referenceSpace=renderer.xr.getReferenceSpace();
 
 if(!hitTestSourceRequested){
 
-session.requestReferenceSpace("viewer").then(function(space){
+session.requestReferenceSpace("viewer").then((space)=>{
 
-session.requestHitTestSource({
-space:space
-}).then(function(source){
+session.requestHitTestSource({space:space}).then((source)=>{
 
-hitTestSource = source;
+hitTestSource=source;
 
 });
-
-});
-
-session.addEventListener("end",function(){
-
-hitTestSourceRequested=false;
-hitTestSource=null;
 
 });
 
@@ -179,24 +184,15 @@ hitTestSourceRequested=true;
 
 }
 
-/* USE LOCAL SPACE */
-
-const referenceSpace = renderer.xr.getReferenceSpace();
-
-/* DETECT SURFACE */
-
 if(hitTestSource){
 
-const hitTestResults = frame.getHitTestResults(hitTestSource);
+const hits=frame.getHitTestResults(hitTestSource);
 
-if(hitTestResults.length){
+if(hits.length){
 
-const hit = hitTestResults[0];
-
-const pose = hit.getPose(referenceSpace);
+const pose=hits[0].getPose(referenceSpace);
 
 reticle.visible=true;
-
 reticle.matrix.fromArray(pose.transform.matrix);
 
 }else{
